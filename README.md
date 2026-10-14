@@ -1,98 +1,138 @@
-# WordPress Entwicklungsumgebung
+# WordPress-Docker-Testumgebung
 
-Dieses Projekt stellt eine lokale Entwicklungs- und Testumgebung für WordPress bereit.
-
-Die Umgebung läuft mit Docker Compose und besteht aus:
-
-- WordPress
-- MariaDB
-- phpMyAdmin
-
-Dadurch können Änderungen und Konfigurationen lokal getestet werden, ohne am produktiven WordPress-System zu arbeiten.
+Lokale WordPress-Testumgebung für die Schulaufgabe im Bereich Git und Docker. Das Projekt verwendet **Docker Compose** mit **WordPress**, **MariaDB** und **phpMyAdmin**. Alle Dienste laufen lokal unter Windows 11 mit Docker Desktop.
 
 ## Voraussetzungen
 
-- Docker Desktop
-- Docker Compose
-- Git
+- Windows 11 mit Docker Desktop (Docker Compose enthalten)
+- Git und Git Bash
+- Freie lokale Ports **8080** und **8081**
 
-## Einrichtung
+## Projektstruktur
 
-Repository klonen und in den Projektordner wechseln.
+```text
+wp-int-Witt/
+├── docker-compose.yml          # Container und Konfiguration
+├── .env.example                # Vorlage für lokale Zugangsdaten
+├── .gitignore                  # Schließt sensible/lokale Dateien aus
+├── README.md                   # Diese Anleitung
+├── KI_PROMPTS.md               # Dokumentation der KI-Nutzung
+├── wordpress/
+│   └── wp-content/             # WordPress-Inhalte als Bind-Mount
+└── screenshots/
+    ├── wordpress.png
+    ├── wordpress_eingerichtet.png
+    └── phpmyadmin.png
+```
 
-Anschließend die `.env.example` als `.env` kopieren:
+## 1. Installation und Einrichtung
+
+Repository klonen und in den Projektordner wechseln:
+
+```bash
+git clone https://github.com/einsMaxx/wp-int-Witt.git
+cd wp-int-Witt
+```
+
+Die Vorlage für die Umgebungsvariablen kopieren:
 
 ```bash
 cp .env.example .env
 ```
 
-Danach müssen in der `.env` eigene lokale Zugangsdaten eingetragen werden.
-
-Beispiel:
+Die Datei `.env` öffnen und **eigene Passwörter** festlegen:
 
 ```env
 DB_NAME=wordpress
-DB_USER=wordpress
-DB_PASSWORD=CHANGE_ME
-DB_ROOT_PASSWORD=CHANGE_ME
+DB_USER=wpuser
+DB_PASSWORD=HIER_EIN_EIGENES_PASSWORT_EINTRAGEN
+DB_ROOT_PASSWORD=HIER_EIN_ANDERES_PASSWORT_EINTRAGEN
 ```
 
-Die `.env` wird nicht in Git gespeichert, da sie Zugangsdaten enthält.
+Die Datei `.env` enthält Zugangsdaten und darf **nicht auf GitHub hochgeladen** oder in eine Abgabe-ZIP aufgenommen werden. Die `.env.example` dient nur als Vorlage.
 
-## Konfiguration prüfen
+## 2. Docker-Umgebung starten
+
+Konfiguration prüfen:
 
 ```bash
-docker compose config
+docker compose config --quiet
 ```
 
-## Umgebung starten
+Container starten und ihren Status anzeigen:
 
 ```bash
 docker compose up -d
-```
-
-Status der Container prüfen:
-
-```bash
 docker compose ps
 ```
 
-## Zugriff
+Die Datenbank hat einen Healthcheck. WordPress und phpMyAdmin starten abhängig von einer gesunden Datenbankverbindung.
 
-WordPress:
+## 3. Anwendungen aufrufen
 
-`http://localhost:8080`
+| Anwendung | Adresse | Zweck |
+|---|---|---|
+| WordPress | http://localhost:8080 | Website und Administration |
+| WordPress-Administration | http://localhost:8080/wp-admin/ | Beiträge und Einstellungen verwalten |
+| phpMyAdmin | http://localhost:8081 | MariaDB im Browser verwalten |
 
-phpMyAdmin:
+Bei der ersten WordPress-Anmeldung den Einrichtungsassistenten abschließen und einen eigenen Administratorbenutzer erstellen. Für phpMyAdmin die Werte `DB_USER` und `DB_PASSWORD` aus der lokalen `.env` verwenden.
 
-`http://localhost:8081`
+## 4. Datenspeicherung (Persistenz)
 
-Für die Anmeldung an phpMyAdmin werden `DB_USER` und `DB_PASSWORD` aus der lokalen `.env` verwendet.
+Die Daten werden auf zwei Arten gespeichert:
 
-## Persistenz
+- **MariaDB:** Das Docker-Named-Volume `db_data` speichert die Datenbank dauerhaft.
+- **WordPress-Dateien:** Der Ordner `wordpress/wp-content` ist als Bind-Mount mit dem Container verbunden und enthält beispielsweise Plugins, Themes und Uploads.
 
-Für die MariaDB-Daten wird das Named Volume `db_data` verwendet.
+**Durchgeführter Test:** WordPress wurde eingerichtet und ein Testbeitrag veröffentlicht. Danach wurden die Container mit `docker compose restart` neu gestartet. Der Testbeitrag war weiterhin vorhanden. Damit wurde die Datenspeicherung über einen Containerneustart hinweg erfolgreich geprüft.
 
-Der Ordner `wordpress/wp-content` wird als Bind-Mount eingebunden. Dadurch können WordPress-Inhalte direkt auf dem Host bearbeitet werden.
+Hinweis: Dieser Test belegt die Persistenz beim Neustart. Das Löschen des Datenbank-Volumes würde die gespeicherten Daten entfernen.
 
-## Screenshots
+## 5. Screenshots
 
-### WordPress
+### WordPress-Installationsassistent
 
-Screenshot des WordPress-Installers:
+![WordPress-Installationsassistent](screenshots/wordpress.png)
 
-![WordPress Installer](screenshots/wordpress.png)
+### Eingerichtetes WordPress
+
+![Eingerichtetes WordPress-Dashboard](screenshots/wordpress_eingerichtet.png)
 
 ### phpMyAdmin
 
-Screenshot von phpMyAdmin:
-
 ![phpMyAdmin](screenshots/phpmyadmin.png)
 
-## Umgebung stoppen
+## 6. Wichtige Docker-Befehle
 
-```bash
-docker compose down
-```
+| Befehl | Funktion |
+|---|---|
+| `docker compose up -d` | Container im Hintergrund starten |
+| `docker compose ps` | Containerstatus anzeigen |
+| `docker compose logs --tail=50 db` | MariaDB-Protokoll anzeigen |
+| `docker compose restart` | Container neu starten |
+| `docker compose down` | Container stoppen und entfernen; Datenbank-Volume bleibt erhalten |
 
-Das Named Volume mit den Datenbankdaten bleibt dabei erhalten.
+**Achtung:** `docker compose down -v` entfernt zusätzlich das Datenbank-Volume und kann WordPress-Daten unwiderruflich löschen.
+
+### Fehlerbehebung: Datenbankverbindung
+
+Bei der Meldung `Error establishing a database connection` zuerst prüfen:
+
+1. Existiert die `.env` und sind `DB_NAME`, `DB_USER`, `DB_PASSWORD` und `DB_ROOT_PASSWORD` gesetzt?
+2. Zeigt `docker compose ps` MariaDB als `healthy` an?
+3. Enthält `docker compose logs --tail=50 db` Anmeldefehler?
+
+Bei einer bereits initialisierten MariaDB werden bestehende Benutzerpasswörter durch Änderungen an `.env` **nicht automatisch angepasst**. Vor Änderungen an Volumes müssen vorhandene Daten gesichert werden.
+
+## 7. GitHub-Workflow
+
+Die Entwicklung erfolgte über einen Feature-Branch und einen Pull Request nach `main`. Für `main` wurde ein Ruleset mit verpflichtender Pull-Request-Freigabe eingerichtet. Der Pull Request wurde geprüft, genehmigt und gemergt. Die ergänzte Abschlussdokumentation wurde ebenfalls über einen Pull Request übernommen.
+
+Repository: https://github.com/einsMaxx/wp-int-Witt
+
+> Hinweis zur Schulabgabe: Das ursprüngliche Organisations-Repository lautet `BKUerdingen/wp-int-Witt`. Die Zulässigkeit des persönlichen Repositories als Abgabeort muss gegebenenfalls mit der Lehrkraft geklärt werden.
+
+## 8. Hinweise zur Testumgebung
+
+Diese Konfiguration ist für die **lokale Entwicklung und Schule**, nicht für den produktiven öffentlichen Betrieb vorgesehen. WordPress und phpMyAdmin sind über lokale Host-Ports erreichbar. Zugangsdaten gehören ausschließlich in die lokale `.env`.
