@@ -1,0 +1,12 @@
+.env
+
+# Automatisch erzeugte WordPress-Inhalte ignorieren
+wordpress/wp-content/index.php
+wordpress/wp-content/plugins/*
+wordpress/wp-content/themes/*
+wordpress/wp-content/uploads/*
+
+# Eigene Ordnerstruktur in Git behalten
+!wordpress/wp-content/plugins/.gitkeep
+!wordpress/wp-content/themes/.gitkeep
+!wordpress/wp-content/uploads/.gitkeep
